@@ -1,7 +1,11 @@
-# Bifrost
+# Bifrosted
 
-The rainbow bridge connecting your apps. This is a personal project, I don't expect or care if people use this.
-I'm mostly making this for myself - documentation exists in case its helpful to others.
+The rainbow bridge connecting your app to APIs.
+
+```yaml
+dependencies:
+  bifrosted: ^0.1.0
+```
 
 A lightweight, opinionated REST API client and repository pattern for Dart/Flutter with built-in caching and error handling.
 

@@ -1,4 +1,4 @@
-name: bifrost
+name: bifrosted
 description: The rainbow bridge connecting your app to APIs. A lightweight REST API client and repository pattern with caching, offline support, and error handling.
 version: 0.1.0
 repository: https://github.com/colbymaloy/bifrost

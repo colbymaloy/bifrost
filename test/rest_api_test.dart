@@ -1,4 +1,4 @@
-import 'package:bifrost/bifrost.dart';
+import 'package:bifrosted/bifrosted.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:test/test.dart';

@@ -1,4 +1,4 @@
-/// Bifrost - The rainbow bridge connecting your app to APIs.
+/// Bifrosted - The rainbow bridge connecting your app to APIs.
 ///
 /// A lightweight, opinionated REST API client and repository pattern for Dart/Flutter.
 ///
