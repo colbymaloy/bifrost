@@ -1,6 +1,7 @@
 # Bifrost
 
-The rainbow bridge connecting your app to APIs.
+The rainbow bridge connecting your apps. This is a personal project, I don't expect or care if people use this.
+I'm mostly making this for myself - documentation exists in case its helpful to others.
 
 A lightweight, opinionated REST API client and repository pattern for Dart/Flutter with built-in caching and error handling.
 
@@ -12,14 +13,6 @@ A lightweight, opinionated REST API client and repository pattern for Dart/Flutt
 - **Error Notifications** - System-wide error handling via `SystemNotifier`
 - **Pluggable** - Bring your own storage, logging, and connectivity
 
-## Installation
-
-```yaml
-dependencies:
-  bifrost:
-    git:
-      url: https://github.com/yourusername/bifrost.git
-```
 
 ## Quick Start
 
