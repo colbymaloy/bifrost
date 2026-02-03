@@ -1,0 +1,14 @@
+name: bifrost
+description: The rainbow bridge connecting your app to APIs. A lightweight REST API client and repository pattern with caching.
+version: 0.1.0
+repository: https://github.com/yourusername/bifrost
+
+environment:
+  sdk: ^3.0.0
+
+dependencies:
+  http: ^1.2.0
+
+dev_dependencies:
+  lints: ^5.0.0
+  test: ^1.25.0
