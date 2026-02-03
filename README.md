@@ -39,9 +39,6 @@ class MyAPI extends RestAPI {
 
   @override
   String get shortname => 'my_api';
-
-  @override
-  BifrostLogger get logger => Get.find<AppLogger>();
 }
 
 // Your storage service
@@ -104,9 +101,6 @@ class UserRepo extends BifrostRepository<AppController, SharedPrefService, AppNo
   @override
   AppNotifier get notifier => Get.find<AppNotifier>();
 
-  @override
-  BifrostLogger get logger => Get.find<AppLogger>();
-
   Future<User?> getUser(String id) => fetch<User>(
     apiRequest: () => api.get('/users/$id'),
     fromJson: User.fromJson,
@@ -152,8 +146,10 @@ if (user != null) {
 │  Interfaces (you implement these)                           │
 │    ├── StorageService (SharedPreferences, Hive, etc.)       │
 │    ├── ConnectionChecker (connectivity check)               │
-│    ├── SystemNotifier (error handling)                      │
-│    └── BifrostLogger (logging)                              │
+│    └── SystemNotifier (error handling)                      │
+├─────────────────────────────────────────────────────────────┤
+│  Logging (via logger package)                               │
+│    └── bifrostLogger (customize via bifrostLogger = ...)    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
