@@ -2,26 +2,6 @@ import 'package:bifrost/bifrost.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('BifrostLogger', () {
-    test('NoOpLogger does nothing', () {
-      const logger = NoOpLogger();
-      // Should not throw
-      logger.info('test');
-      logger.warning('test');
-      logger.error('test');
-      logger.trace('test');
-    });
-
-    test('PrintLogger prints messages', () {
-      const logger = PrintLogger();
-      // Should not throw
-      logger.info('info message');
-      logger.warning('warning message');
-      logger.error('error message', error: Exception('test'));
-      logger.trace('trace message');
-    });
-  });
-
   group('SystemNotifier', () {
     test('NoOpNotifier does nothing', () {
       const notifier = NoOpNotifier();
@@ -62,6 +42,18 @@ void main() {
         () => Deserializer.deserialize(json, _TestModel.fromJson),
         throwsA(isA<DeserializationException>()),
       );
+    });
+  });
+
+  group('bifrostLogger', () {
+    test('default logger is available', () {
+      expect(bifrostLogger, isA<Logger>());
+    });
+
+    test('logger can be replaced', () {
+      final customLogger = Logger(level: Level.warning);
+      bifrostLogger = customLogger;
+      expect(bifrostLogger, equals(customLogger));
     });
   });
 }

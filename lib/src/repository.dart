@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:logger/logger.dart';
 
 import 'connection_checker.dart';
 import 'logger.dart';
@@ -14,8 +15,7 @@ import 'system_notifier.dart';
 /// - [S] - Your storage service type (must implement [StorageService])
 /// - [N] - Your system notifier type (must implement [SystemNotifier])
 ///
-/// Override [connectionChecker], [storageService], [notifier], and [logger]
-/// to provide implementations.
+/// Override [connectionChecker], [storageService], and [notifier] to provide implementations.
 ///
 /// Example:
 /// ```dart
@@ -30,9 +30,6 @@ import 'system_notifier.dart';
 ///
 ///   @override
 ///   AppNotifier get notifier => Get.find<AppNotifier>();
-///
-///   @override
-///   BifrostLogger get logger => Get.find<AppLogger>();
 ///
 ///   Future<User?> getUser(String id) => fetch<User>(
 ///     apiRequest: () => api.get('/users/$id'),
@@ -52,8 +49,8 @@ abstract class BifrostRepository<C extends ConnectionChecker,
   /// Provide your system notifier implementation for handling API errors globally.
   N get notifier;
 
-  /// Logger instance for this repository.
-  BifrostLogger get logger;
+  /// Logger instance. Override to use a custom logger.
+  Logger get logger => bifrostLogger;
 
   /// Override to disable caching for this entire repository.
   /// Default is `true` (caching enabled).
@@ -89,7 +86,7 @@ abstract class BifrostRepository<C extends ConnectionChecker,
     try {
       return Deserializer.deserialize<T>(jsonDecode(response!.body), fromJson);
     } catch (e) {
-      logger.error('Failed to deserialize response for key: $key', error: e);
+      logger.e('Failed to deserialize response for key: $key', error: e);
       return null;
     }
   }
@@ -125,8 +122,7 @@ abstract class BifrostRepository<C extends ConnectionChecker,
       return Deserializer.deserializeList<T>(
           jsonDecode(response!.body), fromJson);
     } catch (e) {
-      logger.error('Failed to deserialize list response for key: $key',
-          error: e);
+      logger.e('Failed to deserialize list response for key: $key', error: e);
       return null;
     }
   }
@@ -188,19 +184,19 @@ abstract class BifrostRepository<C extends ConnectionChecker,
     } else {
       // Offline - try to return cached data if caching is enabled
       if (!shouldCache || cacheKey == null) {
-        logger.warning('Offline and caching disabled');
+        logger.w('Offline and caching disabled');
         return null;
       }
 
-      logger.info('Offline - checking cache for key: $cacheKey');
+      logger.i('Offline - checking cache for key: $cacheKey');
       final cachedBody = await _getFromCache(cacheKey);
 
       if (cachedBody != null) {
-        logger.info('Returning cached data for key: $cacheKey');
+        logger.i('Returning cached data for key: $cacheKey');
         return http.Response(cachedBody, 200);
       }
 
-      logger.warning('No cached data available for key: $cacheKey');
+      logger.w('No cached data available for key: $cacheKey');
       return null;
     }
   }
@@ -226,9 +222,9 @@ abstract class BifrostRepository<C extends ConnectionChecker,
       await storageService.setString(_dataKey(key), data);
       await storageService.setString(
           _expirationKey(key), expirationTime.toIso8601String());
-      logger.trace('Cached data for key: $key (expires: $expirationTime)');
+      logger.t('Cached data for key: $key (expires: $expirationTime)');
     } catch (e) {
-      logger.error('Failed to cache data for key: $key', error: e);
+      logger.e('Failed to cache data for key: $key', error: e);
     }
   }
 
@@ -249,11 +245,11 @@ abstract class BifrostRepository<C extends ConnectionChecker,
       } else {
         // Expired - clean up
         await clearCache(key);
-        logger.trace('Cache expired for key: $key');
+        logger.t('Cache expired for key: $key');
         return null;
       }
     } catch (e) {
-      logger.error('Failed to read cache for key: $key', error: e);
+      logger.e('Failed to read cache for key: $key', error: e);
       return null;
     }
   }
@@ -264,14 +260,14 @@ abstract class BifrostRepository<C extends ConnectionChecker,
       await storageService.remove(_dataKey(key));
       await storageService.remove(_expirationKey(key));
     } catch (e) {
-      logger.error('Failed to clear cache for key: $key', error: e);
+      logger.e('Failed to clear cache for key: $key', error: e);
     }
   }
 
   /// Clears all cached data (use with caution)
   Future<void> clearAllCache() async {
     await storageService.clear();
-    logger.info('All cache cleared');
+    logger.i('All cache cleared');
   }
 }
 

@@ -1,12 +1,13 @@
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:logger/logger.dart';
 
 import 'logger.dart';
 
 /// Base class for all REST API implementations.
 ///
-/// Subclasses must override [host], [headers], [shortname], and [logger].
+/// Subclasses must override [host], [headers], and [shortname].
 ///
 /// Example:
 /// ```dart
@@ -22,9 +23,6 @@ import 'logger.dart';
 ///
 ///   @override
 ///   String get shortname => 'my_api';
-///
-///   @override
-///   BifrostLogger get logger => Get.find<AppLogger>();
 /// }
 /// ```
 abstract class RestAPI {
@@ -41,8 +39,8 @@ abstract class RestAPI {
   /// Short name for logging purposes.
   String get shortname;
 
-  /// Logger instance for this API.
-  BifrostLogger get logger;
+  /// Logger instance. Override to use a custom logger.
+  Logger get logger => bifrostLogger;
 
   // ---------------------------------------------------------------------------
   // Public API - returns null on network/client errors
@@ -106,18 +104,16 @@ abstract class RestAPI {
     Uri uri,
     Map<String, String>? extraHeaders,
   ) async {
-    logger.info('$shortname request: ${uri.path}');
+    logger.i('$shortname request: ${uri.path}');
     try {
       final response =
           await method(uri, headers: {...headers, ...?extraHeaders});
       return _logResponse(response);
     } on SocketException catch (e, s) {
-      logger.error('$shortname no network: ${uri.path}',
-          error: e, stackTrace: s);
+      logger.e('$shortname no network: ${uri.path}', error: e, stackTrace: s);
       return null;
     } on http.ClientException catch (e, s) {
-      logger.error('$shortname client error: ${uri.path}',
-          error: e, stackTrace: s);
+      logger.e('$shortname client error: ${uri.path}', error: e, stackTrace: s);
       return null;
     }
   }
@@ -130,18 +126,16 @@ abstract class RestAPI {
     String? body,
     Map<String, String>? extraHeaders,
   ) async {
-    logger.info('$shortname request: ${uri.path}');
+    logger.i('$shortname request: ${uri.path}');
     try {
-      final response =
-          await method(uri, body: body, headers: {...headers, ...?extraHeaders});
+      final response = await method(uri,
+          body: body, headers: {...headers, ...?extraHeaders});
       return _logResponse(response);
     } on SocketException catch (e, s) {
-      logger.error('$shortname no network: ${uri.path}',
-          error: e, stackTrace: s);
+      logger.e('$shortname no network: ${uri.path}', error: e, stackTrace: s);
       return null;
     } on http.ClientException catch (e, s) {
-      logger.error('$shortname client error: ${uri.path}',
-          error: e, stackTrace: s);
+      logger.e('$shortname client error: ${uri.path}', error: e, stackTrace: s);
       return null;
     }
   }
@@ -149,10 +143,10 @@ abstract class RestAPI {
   http.Response _logResponse(http.Response response) {
     final status = '${response.statusCode}';
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      logger.info('$shortname $status');
-      logger.trace('$shortname body: ${response.body}');
+      logger.i('$shortname $status');
+      logger.t('$shortname body: ${response.body}');
     } else {
-      logger.warning('$shortname $status | ${response.body}');
+      logger.w('$shortname $status | ${response.body}');
     }
     return response;
   }

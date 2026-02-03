@@ -33,6 +33,9 @@
 /// ```
 library;
 
+// Re-export logger package for convenience
+export 'package:logger/logger.dart' show Logger, Level;
+
 // Interfaces
 export 'src/connection_checker.dart';
 export 'src/logger.dart';
