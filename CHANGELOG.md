@@ -2,16 +2,14 @@
 
 ## 0.2.0
 
-- Added `Faker` utility class for generating mock/test data
-  - Strings: `uuid()`, `name()`, `email()`, `username()`, `string()`, `sentence()`, `paragraph()`
-  - Numbers: `integer()`, `decimal()`, `boolean()`
-  - Dates: `dateTime()`, `pastDate()`, `futureDate()`
-  - Collections: `element()`, `list()`
-  - JSON: `fakeJson()`, `fakeJsonList()`
-- Added model annotations
-  - `@bifrostModel` - marker annotation for data models
-  - `@primaryKey` - marks primary identifier field
-  - `@ignore` - marks field to exclude from serialization
+- Added `@generateFake` annotation for code generation
+- Added `FakeUtils` utility class (uses `faker` package)
+  - `fakeForKey(String key)` - generates fake data based on field name
+  - `create<T>()` - generates fake model from factory
+  - `fakeJson()` / `fakeJsonList()` - generic JSON generators
+- Added `FakeGenerator` for build_runner integration
+  - Generates `.fake()` extension methods for annotated classes
+  - Works with freezed models
 
 ## 0.1.1
 

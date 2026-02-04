@@ -36,8 +36,8 @@ library;
 // Re-export logger package for convenience
 export 'package:logger/logger.dart' show Logger, Level;
 
-// Annotations
-export 'src/annotations.dart';
+// Annotations & Code Generation
+export 'src/generate_fake.dart';
 
 // Interfaces
 export 'src/connection_checker.dart';
@@ -50,4 +50,4 @@ export 'src/repository.dart';
 export 'src/rest_api.dart';
 
 // Testing utilities
-export 'src/faker.dart';
+export 'src/fake_utils.dart';

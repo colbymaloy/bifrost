@@ -4,7 +4,7 @@ The rainbow bridge connecting your app to APIs.
 
 ```yaml
 dependencies:
-  bifrosted: ^0.1.0
+  bifrosted: ^0.2.0
 ```
 "Bifrost" was taken..
 
@@ -139,6 +139,66 @@ if (user != null) {
 } else {
   // Error was already handled by SystemNotifier
 }
+```
+
+## Fake Data Generation
+
+### `@generateFake` Annotation
+
+Add the annotation to your freezed models to auto-generate `.fake()` factory methods:
+
+```dart
+@freezed
+@generateFake
+class User with _$User {
+  factory User({
+    int? id,
+    String? name,
+    String? email,
+  }) = _User;
+
+  factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
+}
+
+// After running build_runner:
+final user = UserFake.fake(); // Generates fake data based on field names
+```
+
+Add to your `build.yaml`:
+
+```yaml
+builders:
+  fake_generator:
+    import: 'package:bifrosted/builder.dart'
+    builder_factories: ['fakeGeneratorBuilder']
+    auto_apply: dependents
+    build_extensions: {".dart": [".fake.g.dart"]}
+    build_to: source
+    applies_builders: ["source_gen|combining_builder"]
+
+targets:
+  $default:
+    builders:
+      your_package|fake_generator:
+        enabled: true
+        generate_for:
+          - lib/data/models/**
+```
+
+### `FakeUtils`
+
+Generate fake data based on field names:
+
+```dart
+FakeUtils.fakeForKey('email');     // -> "john@example.com"
+FakeUtils.fakeForKey('firstName'); // -> "John"
+FakeUtils.fakeForKey('age');       // -> 42
+FakeUtils.fakeForKey('isActive');  // -> true/false
+FakeUtils.fakeForKey('createdAt'); // -> ISO8601 date string
+
+// Generate generic fake JSON
+final json = FakeUtils.fakeJson();
+final users = FakeUtils.fakeJsonList(count: 10);
 ```
 
 ## Architecture
