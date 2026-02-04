@@ -15,11 +15,16 @@ void main() {
       storage = _MockStorage();
       notifier = _MockNotifier();
       connectionChecker = _MockConnectionChecker();
-      repo = _TestRepo(
-        storage: storage,
-        notifier: notifier,
-        connectionChecker: connectionChecker,
-      );
+
+      // Set up service locator to return our mocks
+      bifrostServiceLocator = <T>() {
+        if (T == StorageService) return storage as T;
+        if (T == SystemNotifier) return notifier as T;
+        if (T == ConnectionChecker) return connectionChecker as T;
+        throw StateError('Unknown type: $T');
+      };
+
+      repo = _TestRepo();
     });
 
     group('fetch', () {
@@ -304,31 +309,9 @@ class _MockConnectionChecker implements ConnectionChecker {
   bool get isConnected => connected;
 }
 
-class _TestRepo
-    extends BifrostRepository<_MockConnectionChecker, _MockStorage, _MockNotifier> {
-  _TestRepo({
-    required _MockStorage storage,
-    required _MockNotifier notifier,
-    required _MockConnectionChecker connectionChecker,
-  })  : _storage = storage,
-        _notifier = notifier,
-        _connectionChecker = connectionChecker;
-
-  final _MockStorage _storage;
-  final _MockNotifier _notifier;
-  final _MockConnectionChecker _connectionChecker;
-
+class _TestRepo extends BifrostRepository {
   http.Response? mockResponse;
   bool cachingEnabled = true;
-
-  @override
-  _MockConnectionChecker get connectionChecker => _connectionChecker;
-
-  @override
-  _MockStorage get storageService => _storage;
-
-  @override
-  _MockNotifier get notifier => _notifier;
 
   @override
   bool get enableCaching => cachingEnabled;

@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.4.0
+
+- **Breaking:** Removed generics from `BifrostRepository`
+- Added `bifrostServiceLocator` - Set once, used everywhere
+  ```dart
+  // At app startup:
+  bifrostServiceLocator = <T>() => Get.find<T>();
+  ```
+- Repositories now have zero boilerplate:
+  ```dart
+  class UserRepo extends BifrostRepository {
+    Future<User?> getUser(String id) => fetch<User>(...);
+  }
+  ```
+
 ## 0.3.0
 
 - Added global mock client support for testing

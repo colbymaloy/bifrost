@@ -8,28 +8,52 @@ import 'logger.dart';
 import 'storage_service.dart';
 import 'system_notifier.dart';
 
+// =============================================================================
+// Service Locator
+// =============================================================================
+
+/// Global service locator function used by [BifrostRepository] to find dependencies.
+///
+/// Set this once at app startup:
+/// ```dart
+/// // With GetX:
+/// bifrostServiceLocator = <T>() => Get.find<T>();
+///
+/// // With Provider:
+/// bifrostServiceLocator = <T>() => context.read<T>();
+///
+/// // With get_it:
+/// bifrostServiceLocator = <T>() => GetIt.I<T>();
+/// ```
+T Function<T>() bifrostServiceLocator = <T>() {
+  throw StateError(
+    'bifrostServiceLocator not set. '
+    'Set it at app startup: bifrostServiceLocator = <T>() => Get.find<T>();',
+  );
+};
+
+// =============================================================================
+// BifrostRepository
+// =============================================================================
+
 /// Base repository for REST API calls with optional caching and deserialization.
 ///
-/// Generic parameters:
-/// - [C] - Your connection checker type (must implement [ConnectionChecker])
-/// - [S] - Your storage service type (must implement [StorageService])
-/// - [N] - Your system notifier type (must implement [SystemNotifier])
+/// ## Setup
 ///
-/// Override [connectionChecker], [storageService], and [notifier] to provide implementations.
-///
-/// Example:
+/// Set the service locator once at app startup:
 /// ```dart
-/// class UserRepo extends BifrostRepository<AppController, SharedPrefService, AppNotifier> {
+/// void main() {
+///   bifrostServiceLocator = <T>() => Get.find<T>();
+///   runApp(MyApp());
+/// }
+/// ```
+///
+/// ## Usage
+///
+/// Create repositories with zero boilerplate:
+/// ```dart
+/// class UserRepo extends BifrostRepository {
 ///   final api = MyAPI();
-///
-///   @override
-///   AppController get connectionChecker => Get.find<AppController>();
-///
-///   @override
-///   SharedPrefService get storageService => Get.find<SharedPrefService>();
-///
-///   @override
-///   AppNotifier get notifier => Get.find<AppNotifier>();
 ///
 ///   Future<User?> getUser(String id) => fetch<User>(
 ///     apiRequest: () => api.get('/users/$id'),
@@ -38,16 +62,23 @@ import 'system_notifier.dart';
 ///   );
 /// }
 /// ```
-abstract class BifrostRepository<C extends ConnectionChecker,
-    S extends StorageService, N extends SystemNotifier> {
-  /// Provide your connection checker implementation.
-  C get connectionChecker;
+///
+/// ## Required Dependencies
+///
+/// Register these with your DI before using repositories:
+/// - [ConnectionChecker] - For online/offline detection
+/// - [StorageService] - For caching
+/// - [SystemNotifier] - For error handling
+abstract class BifrostRepository {
+  /// Connection checker from service locator.
+  ConnectionChecker get connectionChecker =>
+      bifrostServiceLocator<ConnectionChecker>();
 
-  /// Provide your storage service implementation.
-  S get storageService;
+  /// Storage service from service locator.
+  StorageService get storageService => bifrostServiceLocator<StorageService>();
 
-  /// Provide your system notifier implementation for handling API errors globally.
-  N get notifier;
+  /// System notifier from service locator.
+  SystemNotifier get notifier => bifrostServiceLocator<SystemNotifier>();
 
   /// Logger instance. Override to use a custom logger.
   Logger get logger => bifrostLogger;
