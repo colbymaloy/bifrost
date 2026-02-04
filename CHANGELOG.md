@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2
+
+- Fixed build.yaml to correctly combine generated code into `.g.dart` files
+  - Changed `build_to: cache` and `build_extensions: .fake.g.part`
+  - Generator output now properly merges with json_serializable/freezed
+
 ## 0.2.1
 
 - Added `build.yaml` for auto-discovery by build_runner
