@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0
+
+- Added global mock client support for testing
+  - `useMockClient()` - Enable mock responses for all RestAPI instances
+  - `useRealClient()` - Reset to real HTTP clients
+  - `setClientFactory()` - Set custom client factory
+  - No more per-API client overrides needed
+
 ## 0.2.2
 
 - Fixed build.yaml to correctly combine generated code into `.g.dart` files

@@ -1,9 +1,77 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:logger/logger.dart';
 
+import 'fake_utils.dart';
 import 'logger.dart';
+
+// =============================================================================
+// Global Client Factory
+// =============================================================================
+
+/// Factory function type for creating HTTP clients.
+typedef ClientFactory = http.Client Function();
+
+/// Global client factory used by all [RestAPI] instances.
+/// 
+/// Defaults to creating a real [http.Client].
+/// Override with [setClientFactory] or use [useMockClient] for testing.
+ClientFactory _clientFactory = () => http.Client();
+
+/// Set a custom client factory for all [RestAPI] instances.
+/// 
+/// Example:
+/// ```dart
+/// setClientFactory(() => MyCustomClient());
+/// ```
+void setClientFactory(ClientFactory factory) {
+  _clientFactory = factory;
+}
+
+/// Reset to using real HTTP clients.
+void useRealClient() {
+  _clientFactory = () => http.Client();
+}
+
+/// Configure all [RestAPI] instances to use a mock client.
+/// 
+/// Call this in your test setup:
+/// ```dart
+/// setUp(() {
+///   useMockClient(); // Success responses with fake data
+/// });
+/// 
+/// // Or for error scenarios:
+/// setUp(() {
+///   useMockClient(shouldFail: true, failStatusCode: 500);
+/// });
+/// ```
+/// 
+/// The mock client returns [FakeUtils.fakeJson()] for success responses.
+/// Override [responseFactory] for custom response data.
+void useMockClient({
+  bool shouldFail = false,
+  int failStatusCode = 400,
+  Map<String, dynamic> Function(http.Request request)? responseFactory,
+}) {
+  _clientFactory = () => MockClient((request) async {
+        if (shouldFail) {
+          return http.Response(
+            jsonEncode({'error': 'Mock failure', 'path': request.url.path}),
+            failStatusCode,
+          );
+        }
+        final body = responseFactory?.call(request) ?? FakeUtils.fakeJson();
+        return http.Response(jsonEncode(body), 200);
+      });
+}
+
+// =============================================================================
+// RestAPI
+// =============================================================================
 
 /// Base class for all REST API implementations.
 ///
@@ -25,10 +93,25 @@ import 'logger.dart';
 ///   String get shortname => 'my_api';
 /// }
 /// ```
+/// 
+/// ## Testing
+/// 
+/// Use [useMockClient] in test setup to mock all API calls:
+/// ```dart
+/// setUp(() {
+///   useMockClient();
+/// });
+/// 
+/// tearDown(() {
+///   useRealClient();
+/// });
+/// ```
 abstract class RestAPI {
   /// HTTP client for making requests.
-  /// Override to provide a custom client (e.g., for mocking).
-  http.Client get client => http.Client();
+  /// 
+  /// By default, uses the global client factory (set via [setClientFactory]
+  /// or [useMockClient]). Override for per-API customization.
+  http.Client get client => _clientFactory();
 
   /// The base host for API requests (e.g., "api.example.com").
   String get host;
