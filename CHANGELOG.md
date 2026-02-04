@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1
+
+- Added `build.yaml` for auto-discovery by build_runner
+  - No manual configuration needed - just add the dependency and run build_runner
+  - Works like freezed/json_serializable out of the box
+
 ## 0.2.0
 
 - Added `@generateFake` annotation for code generation
