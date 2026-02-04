@@ -1,0 +1,11 @@
+# This file auto-registers the fake generator with build_runner.
+# Consumers don't need to configure anything manually.
+
+builders:
+  fake_generator:
+    import: "package:bifrosted/builder.dart"
+    builder_factories: ["fakeGeneratorBuilder"]
+    build_extensions: {".dart": [".fake.g.dart"]}
+    auto_apply: dependents
+    build_to: source
+    applies_builders: ["source_gen|combining_builder"]
