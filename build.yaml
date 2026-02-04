@@ -5,7 +5,7 @@ builders:
   fake_generator:
     import: "package:bifrosted/builder.dart"
     builder_factories: ["fakeGeneratorBuilder"]
-    build_extensions: {".dart": [".fake.g.dart"]}
+    build_extensions: {".dart": [".fake.g.part"]}
     auto_apply: dependents
-    build_to: source
+    build_to: cache
     applies_builders: ["source_gen|combining_builder"]
