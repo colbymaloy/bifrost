@@ -6,8 +6,24 @@ The rainbow bridge connecting your app to APIs.
 dependencies:
   bifrosted: ^0.1.0
 ```
+"Bifrost" was taken..
 
-A lightweight, opinionated REST API client and repository pattern for Dart/Flutter with built-in caching and error handling.
+This is mostly built for my own internal use and don't expect anyone to use this. It's purely to speed up MY development.
+I'm using this package to host my common shared patterns across apps, hence the name Bifrost - the bridge that connects everything.
+
+I'm providing myself abstract classes for utility and ensure i match functionality across projects.
+
+The first release focuses on a simple API abstractions that I use:
+
+The ViewModel(not here yet) gets data from Repository, which uses RestAPI classes to make http requests.
+
+Repository expects you to provide implementation of Caching, Network Connection, and System Notifier that implement their respective base class.
+
+Also includes a custom dummy data annotation for data models to generate the fields with empty data for mocking scenarios.
+
+Goal is to have this be used across Flutter, Jaspr web, and Dart Frog
+
+
 
 ## Features
 
