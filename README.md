@@ -164,25 +164,10 @@ class User with _$User {
 final user = UserFake.fake(); // Generates fake data based on field names
 ```
 
-Add to your `build.yaml`:
+Just run build_runner - the generator is auto-discovered (no `build.yaml` config needed):
 
-```yaml
-builders:
-  fake_generator:
-    import: 'package:bifrosted/builder.dart'
-    builder_factories: ['fakeGeneratorBuilder']
-    auto_apply: dependents
-    build_extensions: {".dart": [".fake.g.dart"]}
-    build_to: source
-    applies_builders: ["source_gen|combining_builder"]
-
-targets:
-  $default:
-    builders:
-      your_package|fake_generator:
-        enabled: true
-        generate_for:
-          - lib/data/models/**
+```bash
+dart run build_runner build
 ```
 
 ### `FakeUtils`
