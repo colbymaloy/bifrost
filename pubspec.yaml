@@ -20,7 +20,7 @@ dependencies:
   logger: ^2.6.2
   faker: ^2.2.0
   # Code generation deps (for builder.dart)
-  analyzer: ^10.0.2
+  analyzer: ^10.0.0
   build: ^4.0.4
   source_gen: ^4.2.0
 
