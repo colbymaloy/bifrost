@@ -1,6 +1,6 @@
 name: bifrosted
 description: The rainbow bridge connecting your app to APIs. A lightweight REST API client and repository pattern with caching, offline support, and error handling.
-version: 0.4.0
+version: 0.4.5
 repository: https://github.com/colbymaloy/bifrost
 homepage: https://github.com/colbymaloy/bifrost
 issue_tracker: https://github.com/colbymaloy/bifrost/issues
@@ -20,11 +20,11 @@ dependencies:
   logger: ^2.6.2
   faker: ^2.2.0
   # Code generation deps (for builder.dart)
-  analyzer: ^7.0.0
-  build: ^2.4.0
-  source_gen: ^2.0.0
+  analyzer: ^10.0.2
+  build: ^4.0.4
+  source_gen: ^4.2.0
 
 dev_dependencies:
   lints: ^5.0.0
   test: ^1.25.0
-  build_runner: ^2.4.0
+  build_runner: ^2.11.0

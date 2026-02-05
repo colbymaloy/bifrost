@@ -46,9 +46,10 @@ class FakeGenerator extends GeneratorForAnnotation<GenerateFake> {
 
     // First try to find a factory constructor that's not fromJson or private
     for (final c in element.constructors) {
+      final name = c.name;
       if (c.isFactory &&
-          !c.name.contains('fromJson') &&
-          !c.name.startsWith('_')) {
+          (name == null || !name.contains('fromJson')) &&
+          (name == null || !name.startsWith('_'))) {
         constructor = c;
         break;
       }
@@ -77,7 +78,7 @@ class FakeGenerator extends GeneratorForAnnotation<GenerateFake> {
     }
 
     // Generate fake values for each parameter using FakeUtils.fakeForKey
-    final params = constructor.parameters.map((p) {
+    final params = constructor.formalParameters.map((p) {
       return "${p.name}: FakeUtils.fakeForKey('${p.name}')";
     }).join(',\n      ');
 

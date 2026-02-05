@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.5
+- update dependencies
+
 ## 0.4.0
 
 - **Breaking:** Removed generics from `BifrostRepository`

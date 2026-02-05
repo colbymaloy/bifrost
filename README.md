@@ -2,10 +2,6 @@
 
 The rainbow bridge connecting your app to APIs.
 
-```yaml
-dependencies:
-  bifrosted: ^0.2.0
-```
 "Bifrost" was taken..
 
 This is mostly built for my own internal use and don't expect anyone to use this. It's purely to speed up MY development.
