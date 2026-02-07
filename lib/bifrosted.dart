@@ -7,7 +7,6 @@
 /// - Repository pattern with automatic caching and memory singleton cache
 /// - Offline-first support with cache fallback
 /// - System-wide error notification via [SystemNotifier]
-/// - Response unwrapping for wrapped APIs (`{"data": {...}}`)
 /// - Write operations with automatic cache invalidation
 /// - Pluggable storage via [StorageService]
 /// - Pluggable logging via [BifrostLogger]

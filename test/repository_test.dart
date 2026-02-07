@@ -24,9 +24,6 @@ void main() {
         throw StateError('Unknown type: $T');
       };
 
-      // Clear memory cache between tests
-      BifrostRepository.clearMemoryCache();
-
       repo = _TestRepo();
     });
 
@@ -124,99 +121,6 @@ void main() {
         final result = await repo.fetchUsers();
 
         expect(result, isNull);
-      });
-    });
-
-    group('unwrapResponse', () {
-      test('unwraps wrapped single response', () async {
-        final wrappedRepo = _WrappedTestRepo();
-        wrappedRepo.mockResponse = http.Response(
-          jsonEncode({
-            'data': {'name': 'Odin', 'age': 1000},
-            'meta': {'page': 1},
-          }),
-          200,
-        );
-
-        final result = await wrappedRepo.fetchUser();
-
-        expect(result, isNotNull);
-        expect(result!.name, 'Odin');
-      });
-
-      test('unwraps wrapped list response', () async {
-        final wrappedRepo = _WrappedTestRepo();
-        wrappedRepo.mockResponse = http.Response(
-          jsonEncode({
-            'data': [
-              {'name': 'Odin', 'age': 1000},
-              {'name': 'Thor', 'age': 500},
-            ],
-            'total': 2,
-          }),
-          200,
-        );
-
-        final result = await wrappedRepo.fetchUsers();
-
-        expect(result, isNotNull);
-        expect(result!.length, 2);
-      });
-    });
-
-    group('memory cache', () {
-      test('returns cached object on second fetch', () async {
-        repo.mockResponse = http.Response(
-          jsonEncode({'name': 'Odin', 'age': 1000}),
-          200,
-        );
-
-        final first = await repo.fetchUserWithCache('123');
-        expect(first!.name, 'Odin');
-
-        // Change the mock response - should still get cached value
-        repo.mockResponse = http.Response(
-          jsonEncode({'name': 'Thor', 'age': 500}),
-          200,
-        );
-
-        final second = await repo.fetchUserWithCache('123');
-        expect(second!.name, 'Odin'); // Still the cached one
-      });
-
-      test('bypasses memory cache when disabled', () async {
-        repo.mockResponse = http.Response(
-          jsonEncode({'name': 'Odin', 'age': 1000}),
-          200,
-        );
-
-        await repo.fetchUserWithCache('123');
-
-        repo.mockResponse = http.Response(
-          jsonEncode({'name': 'Thor', 'age': 500}),
-          200,
-        );
-
-        final result = await repo.fetchUserNoMemoryCache('123');
-        expect(result!.name, 'Thor'); // Fresh from API
-      });
-
-      test('clearMemoryCache forces re-fetch', () async {
-        repo.mockResponse = http.Response(
-          jsonEncode({'name': 'Odin', 'age': 1000}),
-          200,
-        );
-
-        await repo.fetchUserWithCache('123');
-        BifrostRepository.clearMemoryCache();
-
-        repo.mockResponse = http.Response(
-          jsonEncode({'name': 'Thor', 'age': 500}),
-          200,
-        );
-
-        final result = await repo.fetchUserWithCache('123');
-        expect(result!.name, 'Thor');
       });
     });
 
@@ -525,13 +429,6 @@ class _TestRepo extends BifrostRepository {
         cacheKey: 'user_$id',
       );
 
-  Future<_User?> fetchUserNoMemoryCache(String id) => fetch<_User>(
-        apiRequest: () async => mockResponse,
-        fromJson: _User.fromJson,
-        cacheKey: 'user_$id',
-        useMemoryCache: false,
-      );
-
   Future<_User?> createUser() => mutate<_User>(
         apiRequest: () async => mockResponse,
         fromJson: _User.fromJson,
@@ -544,21 +441,3 @@ class _TestRepo extends BifrostRepository {
       );
 }
 
-/// Test repo that unwraps `{"data": ...}` responses.
-class _WrappedTestRepo extends BifrostRepository {
-  http.Response? mockResponse;
-
-  @override
-  dynamic unwrapResponse(dynamic decoded) =>
-      (decoded as Map<String, dynamic>)['data'];
-
-  Future<_User?> fetchUser() => fetch<_User>(
-        apiRequest: () async => mockResponse,
-        fromJson: _User.fromJson,
-      );
-
-  Future<List<_User>?> fetchUsers() => fetchList<_User>(
-        apiRequest: () async => mockResponse,
-        fromJson: _User.fromJson,
-      );
-}

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.2
+
+- Removed `unwrapResponse()` override
+- Removed in-memory singleton cache (`_memoryCache`, `clearMemoryCache`, `useMemoryCache`)
+- Simplified `fetch`/`fetchList` signatures
+
 ## 0.5.1
 
 - Added `bifrostJsonDecode` - Global async JSON decoder
