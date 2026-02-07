@@ -24,6 +24,9 @@ void main() {
         throw StateError('Unknown type: $T');
       };
 
+      // Clear memory cache between tests
+      BifrostRepository.clearMemoryCache();
+
       repo = _TestRepo();
     });
 
@@ -124,6 +127,181 @@ void main() {
       });
     });
 
+    group('unwrapResponse', () {
+      test('unwraps wrapped single response', () async {
+        final wrappedRepo = _WrappedTestRepo();
+        wrappedRepo.mockResponse = http.Response(
+          jsonEncode({
+            'data': {'name': 'Odin', 'age': 1000},
+            'meta': {'page': 1},
+          }),
+          200,
+        );
+
+        final result = await wrappedRepo.fetchUser();
+
+        expect(result, isNotNull);
+        expect(result!.name, 'Odin');
+      });
+
+      test('unwraps wrapped list response', () async {
+        final wrappedRepo = _WrappedTestRepo();
+        wrappedRepo.mockResponse = http.Response(
+          jsonEncode({
+            'data': [
+              {'name': 'Odin', 'age': 1000},
+              {'name': 'Thor', 'age': 500},
+            ],
+            'total': 2,
+          }),
+          200,
+        );
+
+        final result = await wrappedRepo.fetchUsers();
+
+        expect(result, isNotNull);
+        expect(result!.length, 2);
+      });
+    });
+
+    group('memory cache', () {
+      test('returns cached object on second fetch', () async {
+        repo.mockResponse = http.Response(
+          jsonEncode({'name': 'Odin', 'age': 1000}),
+          200,
+        );
+
+        final first = await repo.fetchUserWithCache('123');
+        expect(first!.name, 'Odin');
+
+        // Change the mock response - should still get cached value
+        repo.mockResponse = http.Response(
+          jsonEncode({'name': 'Thor', 'age': 500}),
+          200,
+        );
+
+        final second = await repo.fetchUserWithCache('123');
+        expect(second!.name, 'Odin'); // Still the cached one
+      });
+
+      test('bypasses memory cache when disabled', () async {
+        repo.mockResponse = http.Response(
+          jsonEncode({'name': 'Odin', 'age': 1000}),
+          200,
+        );
+
+        await repo.fetchUserWithCache('123');
+
+        repo.mockResponse = http.Response(
+          jsonEncode({'name': 'Thor', 'age': 500}),
+          200,
+        );
+
+        final result = await repo.fetchUserNoMemoryCache('123');
+        expect(result!.name, 'Thor'); // Fresh from API
+      });
+
+      test('clearMemoryCache forces re-fetch', () async {
+        repo.mockResponse = http.Response(
+          jsonEncode({'name': 'Odin', 'age': 1000}),
+          200,
+        );
+
+        await repo.fetchUserWithCache('123');
+        BifrostRepository.clearMemoryCache();
+
+        repo.mockResponse = http.Response(
+          jsonEncode({'name': 'Thor', 'age': 500}),
+          200,
+        );
+
+        final result = await repo.fetchUserWithCache('123');
+        expect(result!.name, 'Thor');
+      });
+    });
+
+    group('mutate', () {
+      test('returns deserialized response on success', () async {
+        repo.mockResponse = http.Response(
+          jsonEncode({'name': 'NewUser', 'age': 25}),
+          201,
+        );
+
+        final result = await repo.createUser();
+
+        expect(result, isNotNull);
+        expect(result!.name, 'NewUser');
+      });
+
+      test('returns null on error', () async {
+        repo.mockResponse = http.Response('Error', 500);
+
+        final result = await repo.createUser();
+
+        expect(result, isNull);
+      });
+
+      test('invalidates cache keys on success', () async {
+        // Pre-populate cache
+        storage.data['bifrost_cache_data_users_list'] = '[]';
+        storage.data['bifrost_cache_exp_users_list'] =
+            DateTime.now().add(const Duration(hours: 1)).toIso8601String();
+
+        repo.mockResponse = http.Response(
+          jsonEncode({'name': 'NewUser', 'age': 25}),
+          201,
+        );
+
+        await repo.createUser();
+
+        expect(
+            storage.data.containsKey('bifrost_cache_data_users_list'), isFalse);
+      });
+
+      test('does not invalidate cache on failure', () async {
+        storage.data['bifrost_cache_data_users_list'] = '[]';
+        storage.data['bifrost_cache_exp_users_list'] =
+            DateTime.now().add(const Duration(hours: 1)).toIso8601String();
+
+        repo.mockResponse = http.Response('Error', 500);
+
+        await repo.createUser();
+
+        expect(
+            storage.data.containsKey('bifrost_cache_data_users_list'), isTrue);
+      });
+    });
+
+    group('send', () {
+      test('returns true on success', () async {
+        repo.mockResponse = http.Response('', 204);
+
+        final result = await repo.deleteUser('123');
+
+        expect(result, isTrue);
+      });
+
+      test('returns false on error', () async {
+        repo.mockResponse = http.Response('Error', 500);
+
+        final result = await repo.deleteUser('123');
+
+        expect(result, isFalse);
+      });
+
+      test('invalidates cache on success', () async {
+        storage.data['bifrost_cache_data_user_123'] = 'data';
+        storage.data['bifrost_cache_exp_user_123'] = 'exp';
+
+        repo.mockResponse = http.Response('', 204);
+
+        await repo.deleteUser('123');
+
+        expect(
+            storage.data.containsKey('bifrost_cache_data_user_123'), isFalse);
+      });
+    });
+
     group('caching', () {
       test('caches successful response', () async {
         repo.mockResponse = http.Response(
@@ -142,7 +320,8 @@ void main() {
 
         await repo.fetchUserWithCache('123');
 
-        expect(storage.data.containsKey('bifrost_cache_data_user_123'), isFalse);
+        expect(
+            storage.data.containsKey('bifrost_cache_data_user_123'), isFalse);
       });
 
       test('returns cached data when offline', () async {
@@ -206,6 +385,20 @@ void main() {
 
         expect(storage.data.containsKey('bifrost_cache_data_test'), isFalse);
         expect(storage.data.containsKey('bifrost_cache_exp_test'), isFalse);
+      });
+    });
+
+    group('clearAllCache', () {
+      test('does not wipe non-bifrost data', () async {
+        // Add non-bifrost data
+        storage.data['user_token'] = 'abc123';
+        storage.data['app_theme'] = 'dark';
+
+        await repo.clearAllCache();
+
+        // Non-bifrost data should survive
+        expect(storage.data['user_token'], 'abc123');
+        expect(storage.data['app_theme'], 'dark');
       });
     });
   });
@@ -330,5 +523,42 @@ class _TestRepo extends BifrostRepository {
         apiRequest: () async => mockResponse,
         fromJson: _User.fromJson,
         cacheKey: 'user_$id',
+      );
+
+  Future<_User?> fetchUserNoMemoryCache(String id) => fetch<_User>(
+        apiRequest: () async => mockResponse,
+        fromJson: _User.fromJson,
+        cacheKey: 'user_$id',
+        useMemoryCache: false,
+      );
+
+  Future<_User?> createUser() => mutate<_User>(
+        apiRequest: () async => mockResponse,
+        fromJson: _User.fromJson,
+        invalidateKeys: ['users_list'],
+      );
+
+  Future<bool> deleteUser(String id) => send(
+        apiRequest: () async => mockResponse,
+        invalidateKeys: ['user_$id'],
+      );
+}
+
+/// Test repo that unwraps `{"data": ...}` responses.
+class _WrappedTestRepo extends BifrostRepository {
+  http.Response? mockResponse;
+
+  @override
+  dynamic unwrapResponse(dynamic decoded) =>
+      (decoded as Map<String, dynamic>)['data'];
+
+  Future<_User?> fetchUser() => fetch<_User>(
+        apiRequest: () async => mockResponse,
+        fromJson: _User.fromJson,
+      );
+
+  Future<List<_User>?> fetchUsers() => fetchList<_User>(
+        apiRequest: () async => mockResponse,
+        fromJson: _User.fromJson,
       );
 }

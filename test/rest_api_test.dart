@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:bifrosted/bifrosted.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -55,6 +57,22 @@ void main() {
         expect(capturedBody, '{"name": "Odin"}');
       });
 
+      test('POST auto-encodes Map body to JSON', () async {
+        String? capturedBody;
+        api = _TestAPI(
+          mockClient: MockClient((request) async {
+            capturedBody = request.body;
+            return http.Response('{}', 201);
+          }),
+        );
+
+        await api.post('/users', body: {'name': 'Odin', 'age': 1000});
+
+        final decoded = jsonDecode(capturedBody!);
+        expect(decoded['name'], 'Odin');
+        expect(decoded['age'], 1000);
+      });
+
       test('PUT sends body', () async {
         String? capturedBody;
         api = _TestAPI(
@@ -64,9 +82,10 @@ void main() {
           }),
         );
 
-        await api.put('/users/1', body: '{"name": "Thor"}');
+        await api.put('/users/1', body: {'name': 'Thor'});
 
-        expect(capturedBody, '{"name": "Thor"}');
+        final decoded = jsonDecode(capturedBody!);
+        expect(decoded['name'], 'Thor');
       });
 
       test('PATCH sends body', () async {
@@ -78,9 +97,10 @@ void main() {
           }),
         );
 
-        await api.patch('/users/1', body: '{"name": "Loki"}');
+        await api.patch('/users/1', body: {'name': 'Loki'});
 
-        expect(capturedBody, '{"name": "Loki"}');
+        final decoded = jsonDecode(capturedBody!);
+        expect(decoded['name'], 'Loki');
       });
 
       test('DELETE works', () async {

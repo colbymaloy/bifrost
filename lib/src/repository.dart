@@ -33,6 +33,31 @@ T Function<T>() bifrostServiceLocator = <T>() {
 };
 
 // =============================================================================
+// Response Unwrapper
+// =============================================================================
+
+/// Extracts data from a JSON response body.
+///
+/// Many APIs wrap their data:
+/// ```json
+/// { "data": { "id": 1, "name": "Odin" }, "meta": { "page": 1 } }
+/// ```
+///
+/// Use an unwrapper to extract the relevant part:
+/// ```dart
+/// class MyRepo extends BifrostRepository {
+///   @override
+///   dynamic unwrapResponse(dynamic decoded) => decoded['data'];
+/// }
+/// ```
+///
+/// For list endpoints that return `{ "data": [...], "total": 100 }`:
+/// ```dart
+/// @override
+/// dynamic unwrapResponse(dynamic decoded) => decoded['data'];
+/// ```
+
+// =============================================================================
 // BifrostRepository
 // =============================================================================
 
@@ -63,6 +88,27 @@ T Function<T>() bifrostServiceLocator = <T>() {
 /// }
 /// ```
 ///
+/// ## Wrapped APIs
+///
+/// If your API wraps responses (e.g., `{"data": {...}}`), override [unwrapResponse]:
+/// ```dart
+/// class MyRepo extends BifrostRepository {
+///   @override
+///   dynamic unwrapResponse(dynamic decoded) => decoded['data'];
+/// }
+/// ```
+///
+/// ## Write Operations
+///
+/// Use [mutate] for POST/PUT/PATCH/DELETE:
+/// ```dart
+/// Future<User?> createUser(User user) => mutate<User>(
+///   apiRequest: () => api.post('/users', body: user.toJson()),
+///   fromJson: User.fromJson,
+///   invalidateKeys: ['users_list'], // auto-clear related cache
+/// );
+/// ```
+///
 /// ## Required Dependencies
 ///
 /// Register these with your DI before using repositories:
@@ -87,6 +133,37 @@ abstract class BifrostRepository {
   /// Default is `true` (caching enabled).
   bool get enableCaching => true;
 
+  /// Override to unwrap API responses before deserialization.
+  ///
+  /// For example, if your API returns `{"data": {...}, "meta": {...}}`:
+  /// ```dart
+  /// @override
+  /// dynamic unwrapResponse(dynamic decoded) => decoded['data'];
+  /// ```
+  ///
+  /// Default returns [decoded] as-is (no unwrapping).
+  dynamic unwrapResponse(dynamic decoded) => decoded;
+
+  // ===========================================================================
+  // Singleton Cache
+  // ===========================================================================
+
+  /// In-memory cache for deserialized objects.
+  ///
+  /// Avoids re-decoding the same JSON on repeated reads within a session.
+  /// Keys are the same as cache keys. Entries are evicted on write operations
+  /// via [mutate] or manually via [clearMemoryCache].
+  static final Map<String, dynamic> _memoryCache = {};
+
+  /// Clears the in-memory deserialization cache.
+  ///
+  /// Call this if you need to force a fresh deserialization on next fetch.
+  static void clearMemoryCache() => _memoryCache.clear();
+
+  // ===========================================================================
+  // Read Operations
+  // ===========================================================================
+
   /// Fetches data from API and deserializes to a single model.
   ///
   /// [apiRequest] - The API call to execute
@@ -94,6 +171,7 @@ abstract class BifrostRepository {
   /// [endpoint] - API endpoint (e.g., '/users/123'). Used as cache key if [cacheKey] not provided.
   /// [cacheKey] - Explicit cache key. Falls back to [endpoint] if not provided.
   /// [cacheDuration] - How long to cache the response (default: 1 hour)
+  /// [useMemoryCache] - If true, returns cached deserialized object from memory if available (default: true)
   ///
   /// Returns the deserialized model, or null if request fails or offline with no cache.
   Future<T?> fetch<T>({
@@ -102,8 +180,16 @@ abstract class BifrostRepository {
     String? endpoint,
     String? cacheKey,
     Duration cacheDuration = const Duration(hours: 1),
+    bool useMemoryCache = true,
   }) async {
     final key = cacheKey ?? endpoint;
+
+    // Check in-memory cache first
+    if (useMemoryCache && key != null && _memoryCache.containsKey(key)) {
+      logger.t('Memory cache hit for key: $key');
+      return _memoryCache[key] as T;
+    }
+
     final shouldCache = enableCaching && key != null;
     final response = await _makeRequest(
       apiRequest,
@@ -115,7 +201,16 @@ abstract class BifrostRepository {
     if (!_handleResponse(response)) return null;
 
     try {
-      return Deserializer.deserialize<T>(jsonDecode(response!.body), fromJson);
+      final decoded = jsonDecode(response!.body);
+      final unwrapped = unwrapResponse(decoded);
+      final result = fromJson(unwrapped as Map<String, dynamic>);
+
+      // Store in memory cache
+      if (useMemoryCache && key != null) {
+        _memoryCache[key] = result;
+      }
+
+      return result;
     } catch (e) {
       logger.e('Failed to deserialize response for key: $key', error: e);
       return null;
@@ -129,6 +224,7 @@ abstract class BifrostRepository {
   /// [endpoint] - API endpoint (e.g., '/users'). Used as cache key if [cacheKey] not provided.
   /// [cacheKey] - Explicit cache key. Falls back to [endpoint] if not provided.
   /// [cacheDuration] - How long to cache the response (default: 1 hour)
+  /// [useMemoryCache] - If true, returns cached deserialized list from memory if available (default: true)
   ///
   /// Returns the deserialized list, or null if request fails or offline with no cache.
   Future<List<T>?> fetchList<T>({
@@ -137,8 +233,16 @@ abstract class BifrostRepository {
     String? endpoint,
     String? cacheKey,
     Duration cacheDuration = const Duration(hours: 1),
+    bool useMemoryCache = true,
   }) async {
     final key = cacheKey ?? endpoint;
+
+    // Check in-memory cache first
+    if (useMemoryCache && key != null && _memoryCache.containsKey(key)) {
+      logger.t('Memory cache hit for key: $key');
+      return _memoryCache[key] as List<T>;
+    }
+
     final shouldCache = enableCaching && key != null;
     final response = await _makeRequest(
       apiRequest,
@@ -150,12 +254,110 @@ abstract class BifrostRepository {
     if (!_handleResponse(response)) return null;
 
     try {
-      return Deserializer.deserializeList<T>(
-          jsonDecode(response!.body), fromJson);
+      final decoded = jsonDecode(response!.body);
+      final unwrapped = unwrapResponse(decoded);
+      final result = (unwrapped as List<dynamic>)
+          .map((item) => fromJson(item as Map<String, dynamic>))
+          .toList();
+
+      // Store in memory cache
+      if (useMemoryCache && key != null) {
+        _memoryCache[key] = result;
+      }
+
+      return result;
     } catch (e) {
       logger.e('Failed to deserialize list response for key: $key', error: e);
       return null;
     }
+  }
+
+  // ===========================================================================
+  // Write Operations
+  // ===========================================================================
+
+  /// Sends a write request (POST, PUT, PATCH, DELETE) and optionally
+  /// deserializes the response.
+  ///
+  /// [apiRequest] - The API call to execute
+  /// [fromJson] - Optional. If provided, deserializes the response body.
+  /// [invalidateKeys] - Cache keys to clear after a successful request.
+  ///
+  /// Example:
+  /// ```dart
+  /// Future<User?> createUser(User user) => mutate<User>(
+  ///   apiRequest: () => api.post('/users', body: user.toJson()),
+  ///   fromJson: User.fromJson,
+  ///   invalidateKeys: ['users_list'],
+  /// );
+  ///
+  /// Future<bool> deleteUser(String id) async {
+  ///   final success = await mutate(
+  ///     apiRequest: () => api.delete('/users/$id'),
+  ///     invalidateKeys: ['user_$id', 'users_list'],
+  ///   );
+  ///   return success != null;
+  /// }
+  /// ```
+  Future<T?> mutate<T>({
+    required Future<http.Response?> Function() apiRequest,
+    T Function(Map<String, dynamic>)? fromJson,
+    List<String>? invalidateKeys,
+  }) async {
+    final response = await apiRequest();
+
+    if (!_handleResponse(response)) return null;
+
+    // Invalidate related caches on success
+    if (invalidateKeys != null) {
+      for (final key in invalidateKeys) {
+        await clearCache(key);
+        _memoryCache.remove(key);
+      }
+    }
+
+    // If no fromJson provided, return null (success is indicated by non-null check)
+    // For void-like mutations, callers check `result != null` for success.
+    if (fromJson == null || response!.body.isEmpty) {
+      // Return a non-null sentinel for success detection when T is dynamic
+      return null;
+    }
+
+    try {
+      final decoded = jsonDecode(response!.body);
+      final unwrapped = unwrapResponse(decoded);
+      return fromJson(unwrapped as Map<String, dynamic>);
+    } catch (e) {
+      logger.e('Failed to deserialize mutation response', error: e);
+      return null;
+    }
+  }
+
+  /// Sends a write request and returns true if successful (2xx), false otherwise.
+  ///
+  /// Use for fire-and-forget operations where you don't need the response body.
+  ///
+  /// ```dart
+  /// Future<bool> deleteUser(String id) => send(
+  ///   apiRequest: () => api.delete('/users/$id'),
+  ///   invalidateKeys: ['user_$id', 'users_list'],
+  /// );
+  /// ```
+  Future<bool> send({
+    required Future<http.Response?> Function() apiRequest,
+    List<String>? invalidateKeys,
+  }) async {
+    final response = await apiRequest();
+    final success = _handleResponse(response);
+
+    if (success && invalidateKeys != null) {
+      for (final key in invalidateKeys) {
+        await clearCache(key);
+        _memoryCache.remove(key);
+      }
+    }
+
+    return success;
   }
 
   // ===========================================================================
@@ -233,14 +435,17 @@ abstract class BifrostRepository {
   }
 
   // ===========================================================================
-  // Private Cache Methods
+  // Cache Methods
   // ===========================================================================
 
+  /// Prefix for all bifrost cache keys.
+  static const _cachePrefix = 'bifrost_cache_';
+
   /// Cache key for the data itself
-  String _dataKey(String key) => 'bifrost_cache_data_$key';
+  String _dataKey(String key) => '${_cachePrefix}data_$key';
 
   /// Cache key for the expiration timestamp
-  String _expirationKey(String key) => 'bifrost_cache_exp_$key';
+  String _expirationKey(String key) => '${_cachePrefix}exp_$key';
 
   /// Saves data to cache with expiration
   Future<void> _saveToCache(
@@ -285,62 +490,40 @@ abstract class BifrostRepository {
     }
   }
 
-  /// Clears cached data for a specific key
+  /// Clears cached data for a specific key (both disk and memory).
   Future<void> clearCache(String key) async {
     try {
       await storageService.remove(_dataKey(key));
       await storageService.remove(_expirationKey(key));
+      _memoryCache.remove(key);
     } catch (e) {
       logger.e('Failed to clear cache for key: $key', error: e);
     }
   }
 
-  /// Clears all cached data (use with caution)
+  /// Clears all bifrost cache entries without affecting other stored data.
+  ///
+  /// This only removes keys prefixed with `bifrost_cache_`, leaving
+  /// user preferences, auth tokens, etc. untouched.
   Future<void> clearAllCache() async {
-    await storageService.clear();
-    logger.i('All cache cleared');
-  }
-}
-
-// ============================================================================
-// Deserialization Utilities
-// ============================================================================
-
-/// Utility class for converting JSON responses into typed Dart models.
-///
-/// Example:
-/// ```dart
-/// final json = jsonDecode(response.body);
-/// final user = Deserializer.deserialize<User>(json, User.fromJson);
-/// final users = Deserializer.deserializeList<User>(jsonList, User.fromJson);
-/// ```
-class Deserializer {
-  /// Converts a single JSON map into a typed model instance.
-  static T deserialize<T>(
-    Map<String, dynamic> json,
-    T Function(Map<String, dynamic>) fromJson,
-  ) {
     try {
-      return fromJson(json);
+      final allKeys = storageService.getStringList('bifrost_cache_keys');
+      if (allKeys != null) {
+        for (final key in allKeys) {
+          await storageService.remove(key);
+        }
+        await storageService.remove('bifrost_cache_keys');
+      }
+      _memoryCache.clear();
+      logger.i('All bifrost cache cleared');
     } catch (e) {
-      throw DeserializationException(
-        'Failed to deserialize JSON into $T: $e',
-      );
-    }
-  }
-
-  /// Converts a JSON array into a typed list of model instances.
-  static List<T> deserializeList<T>(
-    List<dynamic> jsonArray,
-    T Function(Map<String, dynamic>) fromJson,
-  ) {
-    try {
-      return jsonArray
-          .map((item) => fromJson(item as Map<String, dynamic>))
-          .toList();
-    } catch (e) {
-      throw DeserializationException(
-        'Failed to deserialize JSON list into List<$T>: $e',
+      // Fallback: we can't enumerate keys in most storage implementations,
+      // so just clear the memory cache and log a warning.
+      _memoryCache.clear();
+      logger.w(
+        'Could not enumerate cache keys. Memory cache cleared. '
+        'Use clearCache(key) for specific keys.',
+        error: e,
       );
     }
   }

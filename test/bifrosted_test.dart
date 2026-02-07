@@ -14,34 +14,10 @@ void main() {
     });
   });
 
-  group('Deserializer', () {
-    test('deserialize converts JSON to model', () {
-      final json = {'name': 'Odin', 'age': 1000};
-      final result = Deserializer.deserialize(json, _TestModel.fromJson);
-
-      expect(result.name, 'Odin');
-      expect(result.age, 1000);
-    });
-
-    test('deserializeList converts JSON array to list', () {
-      final jsonArray = [
-        {'name': 'Odin', 'age': 1000},
-        {'name': 'Thor', 'age': 500},
-      ];
-      final result =
-          Deserializer.deserializeList(jsonArray, _TestModel.fromJson);
-
-      expect(result.length, 2);
-      expect(result[0].name, 'Odin');
-      expect(result[1].name, 'Thor');
-    });
-
-    test('deserialize throws on invalid JSON', () {
-      final json = {'invalid': 'data'};
-      expect(
-        () => Deserializer.deserialize(json, _TestModel.fromJson),
-        throwsA(isA<DeserializationException>()),
-      );
+  group('DeserializationException', () {
+    test('has descriptive message', () {
+      final exception = DeserializationException('test error');
+      expect(exception.toString(), contains('test error'));
     });
   });
 

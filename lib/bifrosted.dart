@@ -4,15 +4,23 @@
 ///
 /// ## Features
 /// - Abstract REST API client with GET, POST, PUT, PATCH, DELETE
-/// - Repository pattern with automatic caching
+/// - Repository pattern with automatic caching and memory singleton cache
 /// - Offline-first support with cache fallback
 /// - System-wide error notification via [SystemNotifier]
+/// - Response unwrapping for wrapped APIs (`{"data": {...}}`)
+/// - Write operations with automatic cache invalidation
 /// - Pluggable storage via [StorageService]
 /// - Pluggable logging via [BifrostLogger]
+/// - Global service locator (works with GetX, Provider, get_it, etc.)
 ///
 /// ## Quick Start
 ///
-/// 1. Implement the interfaces:
+/// 1. Set the service locator:
+/// ```dart
+/// bifrostServiceLocator = <T>() => Get.find<T>();
+/// ```
+///
+/// 2. Implement the interfaces:
 /// ```dart
 /// class MyAPI extends RestAPI { ... }
 /// class MyStorage implements StorageService { ... }
@@ -20,14 +28,20 @@
 /// class MyConnectivity implements ConnectionChecker { ... }
 /// ```
 ///
-/// 2. Create your repository:
+/// 3. Create your repository:
 /// ```dart
-/// class UserRepo extends BifrostRepository<MyConnectivity, MyStorage, MyNotifier> {
+/// class UserRepo extends BifrostRepository {
 ///   final api = MyAPI();
 ///
 ///   Future<User?> getUser(String id) => fetch<User>(
 ///     apiRequest: () => api.get('/users/$id'),
 ///     fromJson: User.fromJson,
+///   );
+///
+///   Future<User?> createUser(User user) => mutate<User>(
+///     apiRequest: () => api.post('/users', body: user.toJson()),
+///     fromJson: User.fromJson,
+///     invalidateKeys: ['users_list'],
 ///   );
 /// }
 /// ```

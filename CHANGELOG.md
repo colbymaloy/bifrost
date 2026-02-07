@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.5.0
+
+- **Breaking:** Removed `dart:io` dependency - now works on web/Jaspr
+- **Breaking:** `post`/`put`/`patch`/`delete` body is now `Object?` instead of `String?`
+  - Maps and Lists are auto-encoded to JSON
+  - Strings are sent as-is
+- **Breaking:** Removed `Deserializer` class - deserialization is now inlined
+- Added `unwrapResponse()` override for wrapped API responses (`{"data": {...}}`)
+- Added `mutate<T>()` for write operations (POST/PUT/PATCH/DELETE) with optional deserialization
+- Added `send()` for fire-and-forget writes that return `bool`
+- Both `mutate` and `send` accept `invalidateKeys` for automatic cache invalidation
+- Added in-memory singleton cache for deserialized objects
+  - `BifrostRepository.clearMemoryCache()` to reset
+  - `useMemoryCache` parameter on `fetch`/`fetchList` to opt out per call
+- `clearAllCache()` now only removes bifrost-prefixed keys (no longer wipes all storage)
+- `DeserializationException` is still exported for custom use
+
 ## 0.4.5
 - update dependencies
 

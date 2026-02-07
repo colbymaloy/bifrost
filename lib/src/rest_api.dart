@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -16,13 +15,13 @@ import 'logger.dart';
 typedef ClientFactory = http.Client Function();
 
 /// Global client factory used by all [RestAPI] instances.
-/// 
+///
 /// Defaults to creating a real [http.Client].
 /// Override with [setClientFactory] or use [useMockClient] for testing.
 ClientFactory _clientFactory = () => http.Client();
 
 /// Set a custom client factory for all [RestAPI] instances.
-/// 
+///
 /// Example:
 /// ```dart
 /// setClientFactory(() => MyCustomClient());
@@ -37,19 +36,19 @@ void useRealClient() {
 }
 
 /// Configure all [RestAPI] instances to use a mock client.
-/// 
+///
 /// Call this in your test setup:
 /// ```dart
 /// setUp(() {
 ///   useMockClient(); // Success responses with fake data
 /// });
-/// 
+///
 /// // Or for error scenarios:
 /// setUp(() {
 ///   useMockClient(shouldFail: true, failStatusCode: 500);
 /// });
 /// ```
-/// 
+///
 /// The mock client returns [FakeUtils.fakeJson()] for success responses.
 /// Override [responseFactory] for custom response data.
 void useMockClient({
@@ -93,22 +92,22 @@ void useMockClient({
 ///   String get shortname => 'my_api';
 /// }
 /// ```
-/// 
+///
 /// ## Testing
-/// 
+///
 /// Use [useMockClient] in test setup to mock all API calls:
 /// ```dart
 /// setUp(() {
 ///   useMockClient();
 /// });
-/// 
+///
 /// tearDown(() {
 ///   useRealClient();
 /// });
 /// ```
 abstract class RestAPI {
   /// HTTP client for making requests.
-  /// 
+  ///
   /// By default, uses the global client factory (set via [setClientFactory]
   /// or [useMockClient]). Override for per-API customization.
   http.Client get client => _clientFactory();
@@ -129,6 +128,7 @@ abstract class RestAPI {
   // Public API - returns null on network/client errors
   // ---------------------------------------------------------------------------
 
+  /// Sends a GET request to [endpoint].
   Future<http.Response?> get(
     String endpoint, {
     Map<String, String>? queryParams,
@@ -136,33 +136,53 @@ abstract class RestAPI {
   }) =>
       _send(client.get, _buildUri(endpoint, queryParams), extraHeaders);
 
+  /// Sends a POST request to [endpoint].
+  ///
+  /// [body] is automatically JSON-encoded if it's a Map or List.
+  /// Pass a String to send raw.
   Future<http.Response?> post(
     String endpoint, {
-    String? body,
+    Object? body,
     Map<String, String>? extraHeaders,
   }) =>
-      _sendWithBody(client.post, _buildUri(endpoint), body, extraHeaders);
+      _sendWithBody(
+          client.post, _buildUri(endpoint), _encodeBody(body), extraHeaders);
 
+  /// Sends a PUT request to [endpoint].
+  ///
+  /// [body] is automatically JSON-encoded if it's a Map or List.
+  /// Pass a String to send raw.
   Future<http.Response?> put(
     String endpoint, {
-    String? body,
+    Object? body,
     Map<String, String>? extraHeaders,
   }) =>
-      _sendWithBody(client.put, _buildUri(endpoint), body, extraHeaders);
+      _sendWithBody(
+          client.put, _buildUri(endpoint), _encodeBody(body), extraHeaders);
 
+  /// Sends a PATCH request to [endpoint].
+  ///
+  /// [body] is automatically JSON-encoded if it's a Map or List.
+  /// Pass a String to send raw.
   Future<http.Response?> patch(
     String endpoint, {
-    String? body,
+    Object? body,
     Map<String, String>? extraHeaders,
   }) =>
-      _sendWithBody(client.patch, _buildUri(endpoint), body, extraHeaders);
+      _sendWithBody(
+          client.patch, _buildUri(endpoint), _encodeBody(body), extraHeaders);
 
+  /// Sends a DELETE request to [endpoint].
+  ///
+  /// [body] is automatically JSON-encoded if it's a Map or List.
+  /// Pass a String to send raw.
   Future<http.Response?> delete(
     String endpoint, {
-    String? body,
+    Object? body,
     Map<String, String>? extraHeaders,
   }) =>
-      _sendWithBody(client.delete, _buildUri(endpoint), body, extraHeaders);
+      _sendWithBody(
+          client.delete, _buildUri(endpoint), _encodeBody(body), extraHeaders);
 
   /// Send a GET request to a raw URL (bypasses [host]).
   Future<http.Response?> sendRaw(
@@ -170,6 +190,8 @@ abstract class RestAPI {
     Map<String, String>? extraHeaders,
   }) =>
       _send(client.get, Uri.parse(url), extraHeaders);
+
+  // TODO: Add multipart / file upload support.
 
   // ---------------------------------------------------------------------------
   // Private
@@ -182,6 +204,14 @@ abstract class RestAPI {
         queryParameters: queryParams?.isNotEmpty == true ? queryParams : null,
       );
 
+  /// Encodes [body] to a JSON string if it's a Map or List.
+  /// Returns the value as-is if it's already a String, or null.
+  String? _encodeBody(Object? body) {
+    if (body == null) return null;
+    if (body is String) return body;
+    return jsonEncode(body);
+  }
+
   Future<http.Response?> _send(
     Future<http.Response> Function(Uri, {Map<String, String>? headers}) method,
     Uri uri,
@@ -192,9 +222,6 @@ abstract class RestAPI {
       final response =
           await method(uri, headers: {...headers, ...?extraHeaders});
       return _logResponse(response);
-    } on SocketException catch (e, s) {
-      logger.e('$shortname no network: ${uri.path}', error: e, stackTrace: s);
-      return null;
     } on http.ClientException catch (e, s) {
       logger.e('$shortname client error: ${uri.path}', error: e, stackTrace: s);
       return null;
@@ -214,9 +241,6 @@ abstract class RestAPI {
       final response = await method(uri,
           body: body, headers: {...headers, ...?extraHeaders});
       return _logResponse(response);
-    } on SocketException catch (e, s) {
-      logger.e('$shortname no network: ${uri.path}', error: e, stackTrace: s);
-      return null;
     } on http.ClientException catch (e, s) {
       logger.e('$shortname client error: ${uri.path}', error: e, stackTrace: s);
       return null;
