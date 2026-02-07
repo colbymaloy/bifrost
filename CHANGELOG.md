@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.1
+
+- Added `bifrostJsonDecode` - Global async JSON decoder
+  - Defaults to synchronous `jsonDecode` (works everywhere)
+  - Override to decode on a background isolate for large payloads:
+    ```dart
+    // Dart:
+    bifrostJsonDecode = (body) => Isolate.run(() => jsonDecode(body));
+
+    // Flutter:
+    bifrostJsonDecode = (body) => compute(jsonDecode, body);
+    ```
+  - Web-safe: no `dart:isolate` dependency in bifrosted itself
+
 ## 0.5.0
 
 - **Breaking:** Removed `dart:io` dependency - now works on web/Jaspr

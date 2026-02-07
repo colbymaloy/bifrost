@@ -33,6 +33,29 @@ T Function<T>() bifrostServiceLocator = <T>() {
 };
 
 // =============================================================================
+// JSON Decoder
+// =============================================================================
+
+/// Global JSON decode function used by [BifrostRepository].
+///
+/// Defaults to synchronous [jsonDecode]. Override to decode on a background
+/// isolate for large payloads:
+///
+/// ```dart
+/// // Dart (non-web):
+/// import 'dart:isolate';
+/// bifrostJsonDecode = (body) => Isolate.run(() => jsonDecode(body));
+///
+/// // Flutter:
+/// import 'package:flutter/foundation.dart';
+/// bifrostJsonDecode = (body) => compute(jsonDecode, body);
+/// ```
+///
+/// Falls back to synchronous decoding on web where isolates aren't available.
+Future<dynamic> Function(String body) bifrostJsonDecode =
+    (body) async => jsonDecode(body);
+
+// =============================================================================
 // Response Unwrapper
 // =============================================================================
 
@@ -201,7 +224,7 @@ abstract class BifrostRepository {
     if (!_handleResponse(response)) return null;
 
     try {
-      final decoded = jsonDecode(response!.body);
+      final decoded = await bifrostJsonDecode(response!.body);
       final unwrapped = unwrapResponse(decoded);
       final result = fromJson(unwrapped as Map<String, dynamic>);
 
@@ -254,7 +277,7 @@ abstract class BifrostRepository {
     if (!_handleResponse(response)) return null;
 
     try {
-      final decoded = jsonDecode(response!.body);
+      final decoded = await bifrostJsonDecode(response!.body);
       final unwrapped = unwrapResponse(decoded);
       final result = (unwrapped as List<dynamic>)
           .map((item) => fromJson(item as Map<String, dynamic>))
@@ -324,7 +347,7 @@ abstract class BifrostRepository {
     }
 
     try {
-      final decoded = jsonDecode(response!.body);
+      final decoded = await bifrostJsonDecode(response!.body);
       final unwrapped = unwrapResponse(decoded);
       return fromJson(unwrapped as Map<String, dynamic>);
     } catch (e) {
